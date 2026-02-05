@@ -8,15 +8,14 @@ import { searchSentences } from '../lib/storage';
 import { API_URL } from '../lib/api';
 import type { Route } from './+types/home';
 
-// 后端返回的 Sentence 类型
+// 后端返回的 Sentence 类型（多分类）
 interface ApiSentence {
   id: string;
   content: string;
-  categoryId: string;
-  category: {
+  categories: {
     id: string;
     name: string;
-  };
+  }[];
   createdAt: string;
 }
 
@@ -55,12 +54,12 @@ export async function clientLoader(): Promise<LoaderData> {
     const apiSentences: ApiSentence[] = await sentencesResponse.json();
     const categoryTree: Category[] = await categoryTreeResponse.json();
 
-    // 转换后端数据格式到前端格式
+    // 转换后端数据格式到前端格式（多分类）
     const sentences: Sentence[] = apiSentences.map((s) => ({
       id: s.id,
       text: s.content,
-      categoryId: s.categoryId,
-      categoryName: s.category.name,
+      categoryIds: s.categories.map(c => c.id),
+      categoryNames: s.categories.map(c => c.name),
       createdAt: new Date(s.createdAt).getTime(),
     }));
 
@@ -116,7 +115,7 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [sentences.length]);
 
-  const handleAddSentence = async (text: string, categoryId: string) => {
+  const handleAddSentence = async (text: string, categoryIds: string[]) => {
     try {
       const response = await fetch(`${API_URL}/sentences`, {
         method: "POST",
@@ -125,7 +124,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           content: text,
-          categoryId: categoryId,
+          categoryIds: categoryIds, // 发送多个分类 ID
         }),
       });
 

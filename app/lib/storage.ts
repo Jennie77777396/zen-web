@@ -2,8 +2,8 @@
 export interface Sentence {
   id: string;
   text: string;
-  categoryId: string;
-  categoryName?: string; 
+  categoryIds: string[]; // 多分类支持
+  categoryNames: string[]; // 多个分类名称
   createdAt: number;
 }
 
@@ -26,7 +26,7 @@ export function searchSentences(query: string, sentences: Sentence[]): Sentence[
   return sentences.filter(
     (s) =>
       s.text.toLowerCase().includes(lowerQuery) ||
-      (s.categoryName && s.categoryName.toLowerCase().includes(lowerQuery))
+      s.categoryNames.some(name => name.toLowerCase().includes(lowerQuery))
   );
 }
 

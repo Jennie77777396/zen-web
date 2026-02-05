@@ -30,15 +30,18 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
 
         {/* Bottom Section */}
         <div className="flex items-center justify-between gap-3">
-          {/* Category */}
+          {/* Categories (多分类显示) */}
           <div className="flex flex-wrap gap-1.5 flex-1">
-            {sentence.categoryName && (
-              <span
-                className="px-2 py-0.5 text-[11px] bg-foreground/[0.04] text-foreground/50 rounded hover:bg-foreground/[0.08] hover:text-foreground/70 transition-all cursor-default"
-              >
-                {sentence.categoryName}
-              </span>
-            )}
+            {sentence.categoryNames && sentence.categoryNames.length > 0 ? (
+              sentence.categoryNames.map((categoryName, index) => (
+                <span
+                  key={index}
+                  className="px-2 py-0.5 text-[11px] bg-foreground/[0.04] text-foreground/50 rounded hover:bg-foreground/[0.08] hover:text-foreground/70 transition-all cursor-default"
+                >
+                  {categoryName}
+                </span>
+              ))
+            ) : null}
           </div>
 
           {/* Action Buttons */}

@@ -1,10 +1,16 @@
 // API configuration - supports both development and production
 const getApiUrl = () => {
-  // In production, use environment variable or relative URL
+  // If VITE_API_URL is set, use it (works in both dev and prod)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  
+  // In production, use relative URL as fallback
   if (import.meta.env.PROD) {
     return import.meta.env.VITE_API_URL || '/api';
   }
-  // In development, use localhost
+  
+  // In development, use localhost as default
   return 'http://localhost:3000';
 };
 

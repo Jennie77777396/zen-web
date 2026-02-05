@@ -13,7 +13,7 @@ interface Category {
 interface AddSentenceDialogProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (text: string, categoryId: string) => void;
+  onAdd: (text: string, categoryIds: string[]) => void; // 多分类支持
   initialText?: string;
   categoryTree: Category[];
   onCategoryTreeChange?: () => void;
@@ -204,11 +204,12 @@ export function AddSentenceDialog({ open, onClose, onAdd, initialText = '', cate
     }
 
     if (finalCategoryIds.length === 0) {
-      return; // 没有分类，不提交
+      alert("Please select or create at least one category.");
+      return;
     }
 
-    // 提交 - 使用第一个分类（后端目前只支持单分类）
-    onAdd(text.trim(), finalCategoryIds[0]);
+    // 提交 - 发送所有选中的分类
+    onAdd(text.trim(), finalCategoryIds);
     
     // 重置并关闭
     setText('');
