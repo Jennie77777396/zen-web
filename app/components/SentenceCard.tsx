@@ -30,16 +30,15 @@ export function SentenceCard({ sentence, onDelete }: SentenceCardProps) {
 
         {/* Bottom Section */}
         <div className="flex items-center justify-between gap-3">
-          {/* Categories */}
+          {/* Category */}
           <div className="flex flex-wrap gap-1.5 flex-1">
-            {sentence.categories.map((category) => (
+            {sentence.categoryName && (
               <span
-                key={category}
                 className="px-2 py-0.5 text-[11px] bg-foreground/[0.04] text-foreground/50 rounded hover:bg-foreground/[0.08] hover:text-foreground/70 transition-all cursor-default"
               >
-                {category}
+                {sentence.categoryName}
               </span>
-            ))}
+            )}
           </div>
 
           {/* Action Buttons */}

@@ -1,29 +1,83 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router';
+import { useSearchParams, useLoaderData, useRevalidator } from 'react-router';
 import { Search, Plus } from 'lucide-react';
 import { SentenceCard } from '../components/SentenceCard';
 import { AddSentenceDialog } from '../components/AddSentenceDialog';
 import type { Sentence } from '../lib/storage';
-import { 
-  getSentences, 
-  searchSentences, 
-  addSentence as addSentenceToStorage, 
-  deleteSentence
-} from '../lib/storage';
+import { searchSentences } from '../lib/storage';
+import { API_URL } from '../lib/api';
 import type { Route } from './+types/home';
+
+// 后端返回的 Sentence 类型
+interface ApiSentence {
+  id: string;
+  content: string;
+  categoryId: string;
+  category: {
+    id: string;
+    name: string;
+  };
+  createdAt: string;
+}
+
+// 后端返回的 Category 类型（树结构）
+interface Category {
+  id: string;
+  name: string;
+  parentId: string | null;
+  children: Category[];
+  createdAt: string;
+}
+
+interface LoaderData {
+  sentences: Sentence[];
+  categoryTree: Category[];
+}
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Minimalist Sentence Organizer" },
+    { title: "Zen" },
     { name: "description", content: "Organize and manage your favorite sentences" },
   ];
 }
 
+export async function clientLoader(): Promise<LoaderData> {
+  try {
+    const [sentencesResponse, categoryTreeResponse] = await Promise.all([
+      fetch(`${API_URL}/sentences`),
+      fetch(`${API_URL}/categories/tree`),
+    ]);
+
+    if (!sentencesResponse.ok || !categoryTreeResponse.ok) {
+      throw new Error("Failed to fetch data");
+    }
+
+    const apiSentences: ApiSentence[] = await sentencesResponse.json();
+    const categoryTree: Category[] = await categoryTreeResponse.json();
+
+    // 转换后端数据格式到前端格式
+    const sentences: Sentence[] = apiSentences.map((s) => ({
+      id: s.id,
+      text: s.content,
+      categoryId: s.categoryId,
+      categoryName: s.category.name,
+      createdAt: new Date(s.createdAt).getTime(),
+    }));
+
+    return { sentences, categoryTree };
+  } catch (error) {
+    console.error("Error loading data:", error);
+    // 返回空数据，避免页面崩溃
+    return { sentences: [], categoryTree: [] };
+  }
+}
+
 export default function Home() {
+  const { sentences: allSentences, categoryTree } = useLoaderData<typeof clientLoader>();
+  const revalidator = useRevalidator();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   
-  const [allSentences, setAllSentences] = useState<Sentence[]>(getSentences());
   const [searchValue, setSearchValue] = useState(initialQuery);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [displayCount, setDisplayCount] = useState(20);
@@ -33,7 +87,7 @@ export default function Home() {
     if (!searchValue.trim()) {
       return allSentences;
     }
-    return searchSentences(searchValue);
+    return searchSentences(searchValue, allSentences);
   }, [allSentences, searchValue]);
 
   // Handle search input
@@ -62,24 +116,59 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [sentences.length]);
 
-  const handleAddSentence = (text: string, categories: string[]) => {
-    addSentenceToStorage(text, categories);
-    // Reload data
-    setAllSentences(getSentences());
-    setAddDialogOpen(false);
+  const handleAddSentence = async (text: string, categoryId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/sentences`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: text,
+          categoryId: categoryId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create sentence");
+      }
+
+      setAddDialogOpen(false);
+      // 重新加载数据
+      revalidator.revalidate();
+    } catch (error) {
+      console.error("Error adding sentence:", error);
+      alert("Failed to add sentence. Please try again.");
+    }
   };
 
-  const handleDeleteSentence = (id: string) => {
-    deleteSentence(id);
-    // Update local state
-    setAllSentences(allSentences.filter((s) => s.id !== id));
+  const handleDeleteSentence = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this sentence?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/sentences/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete sentence");
+      }
+
+      // 重新加载数据
+      revalidator.revalidate();
+    } catch (error) {
+      console.error("Error deleting sentence:", error);
+      alert("Failed to delete sentence. Please try again.");
+    }
   };
 
   const displayedSentences = sentences.slice(0, displayCount);
   const hasResults = sentences.length > 0;
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
+    <div className="max-w-4xl mx-auto px-6 py-12">
       {/* Search Bar - Notion style */}
       <div className="mb-8">
         <div className="relative group">
@@ -143,6 +232,8 @@ export default function Home() {
         onClose={() => setAddDialogOpen(false)}
         onAdd={handleAddSentence}
         initialText={searchValue}
+        categoryTree={categoryTree}
+        onCategoryTreeChange={() => revalidator.revalidate()}
       />
     </div>
   );
