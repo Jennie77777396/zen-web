@@ -142,6 +142,12 @@ export default function App() {
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+  // 忽略 Chrome DevTools 的自动请求（不影响应用功能）
+  if (error instanceof Error && error.message.includes('.well-known')) {
+    // 静默处理 Chrome DevTools 的 .well-known 请求
+    return null;
+  }
+
   let message = "Oops!";
   let details = "An unexpected error occurred.";
   let stack: string | undefined;
